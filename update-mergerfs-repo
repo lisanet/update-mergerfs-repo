@@ -34,8 +34,7 @@ if [[ -z "$DEB_URL" ]]; then
     exit 1
 fi
 DEB_FILE="${DEB_URL##*/}"
-echo "online: $DEB_FILE"
-exit
+
 # create the apt pool dir
 mkdir -p "$REPO_DIR/pool"
 
