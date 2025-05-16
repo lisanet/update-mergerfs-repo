@@ -1,0 +1,10 @@
+# /etc/systemd/system/update-mergerfs-repo.timer
+[Unit]
+Description=Run mergerfs apt repo updater weekly
+
+[Timer]
+OnCalendar=weekly
+Persistent=true
+
+[Install]
+WantedBy=timers.target

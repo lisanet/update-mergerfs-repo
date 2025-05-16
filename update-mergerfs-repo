@@ -1,0 +1,74 @@
+#!/bin/bash
+# Local APT Repository for mergerfs
+# 2025 by simone at lisanet dot de
+# License: BSD 2 clause - free to use, modify, and distribute
+
+set -e
+
+OWNER="trapexit"
+REPO="mergerfs"
+API_URL="https://api.github.com/repos/$OWNER/$REPO/releases/latest"
+REPO_DIR="/usr/local/aptrepo/mergerfs"
+DIST="stable"
+OVERRIDE_FILE="$REPO_DIR/override"
+
+# Determine current Debian version
+CODENAME=$(lsb_release -cs)
+ARCH=$(dpkg --print-architecture)
+DEB_PKG="$CODENAME"_"$ARCH.deb"
+
+# Check for root privileges
+if [[ $EUID -ne 0 ]]; then
+   echo "Error: This script must be run with sudo."
+   exit 1
+fi
+
+# use GitHub API to find .deb packge matching the debian version
+echo "Retrieve GitHub release data for $REPO ..."
+#DEB_URL=$(curl -s "$API_URL" | jq -r --arg codename "$CODENAME" --arg arch "$ARCH" '.assets[] | select(.name | test($codename + "_" + $arch + "\\.deb$")) | .browser_download_url')
+
+DEB_URL=$(curl -s "$API_URL" | jq -r --arg deb_pkg "$DEB_PKG" '.assets[] | select(.name | test($deb_pkg)) | .browser_download_url')
+
+if [[ -z "$DEB_URL" ]]; then
+    echo "Error: No suitable .deb file found for '$CODENAME'."
+    exit 1
+fi
+DEB_FILE="${DEB_URL##*/}"
+echo "online: $DEB_FILE"
+exit
+# create the apt pool dir
+mkdir -p "$REPO_DIR/pool"
+
+if [ -f "$REPO_DIR/pool/$DEB_FILE" ]; then
+    echo "Lastest version already downloaded. Exiting."
+    exit 0
+fi
+
+# Prepare the repository
+cd "$REPO_DIR/pool"
+echo "Remove old .deb files..."
+rm -f *.deb
+
+echo "Downloading: $DEB_FILE"
+curl -LO "$DEB_URL"
+
+# Create override file (Section: utils, Priority: optional)
+mkdir -p "$REPO_DIR"
+echo "mergerfs optional utils" > "$OVERRIDE_FILE"
+# Build APT structure
+echo "Build apt repo hierarchy..."
+cd "$REPO_DIR"
+mkdir -p dists/$DIST/main/binary-$ARCH
+dpkg-scanpackages -a "$ARCH" pool "$OVERRIDE_FILE" | gzip -9c > dists/$DIST/main/binary-$ARCH/Packages.gz
+
+# Create sources.list entry if not exists
+REPO_FILE="/etc/apt/sources.list.d/local-mergerfs.list"
+if [[ ! -f "$REPO_FILE" ]]; then
+    echo "Create sources.list file..."
+    echo "deb [trusted=yes] file://$REPO_DIR $DIST main" > "$REPO_FILE"
+fi
+
+#echo "→ Run apt update..."
+#apt update
+
+echo "mergerfs apt repo is ready for '$CODENAME'."

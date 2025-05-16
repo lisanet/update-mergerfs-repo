@@ -1,0 +1,9 @@
+# /etc/systemd/system/update-mergerfs-repo.service
+[Unit]
+Description=Update local apt repo for mergerfs
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/update-mergerfs-repo
