@@ -67,7 +67,4 @@ if [[ ! -f "$REPO_FILE" ]]; then
     echo "deb [trusted=yes] file://$REPO_DIR $DIST main" > "$REPO_FILE"
 fi
 
-#echo "→ Run apt update..."
-#apt update
-
 echo "mergerfs apt repo is ready for '$CODENAME'."
